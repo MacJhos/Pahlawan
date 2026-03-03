@@ -1,0 +1,35 @@
+.material-symbols-outlined {
+    font-variation-settings:
+        "FILL" 0,
+        "wght" 400,
+        "GRAD" 0,
+        "opsz" 24;
+}
+
+.hero-card-hover:hover .hero-image {
+    filter: grayscale(0%);
+    transform: scale(1.05);
+}
+
+.hero-image {
+    filter: grayscale(100%);
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.gallery-item:hover img {
+    transform: scale(1.1);
+}
+.overlay-gradient {
+    background: linear-gradient(
+        to top,
+        rgba(0, 0, 0, 0.8) 0%,
+        rgba(0, 0, 0, 0) 100%
+    );
+}
+.hero-bio::first-letter {
+    float: left;
+    font-size: 3.5rem;
+    line-height: 1;
+    font-weight: 900;
+    padding-right: 12px;
+    color: var(--primary);
+}
