@@ -1,6 +1,4 @@
 document.addEventListener("DOMContentLoaded", function () {
-    /** * BAGIAN 1: LIVE SEARCH SUGGESTIONS
-     */
     const searchInput = document.getElementById("search-input");
     if (searchInput) {
         const suggestionBox = document.createElement("div");
@@ -72,9 +70,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    /** * BAGIAN 2: LOAD MORE & SHOW LESS (TOGGLE)
-     * Menggunakan atribut data-more dan data-less untuk bahasa
-     */
     const loadMoreBtn = document.getElementById("load-more-btn");
     const btnText = document.getElementById("btn-text");
     const currentCountDisplay = document.getElementById("current-count");
@@ -85,7 +80,6 @@ document.addEventListener("DOMContentLoaded", function () {
         loadMoreBtn.addEventListener("click", function (e) {
             e.preventDefault();
 
-            // AMBIL TEKS BAHASA DARI ATRIBUT DATA (DIISI OLEH BLADE)
             const textMore = loadMoreBtn.getAttribute("data-more");
             const textLess = loadMoreBtn.getAttribute("data-less");
 
@@ -96,7 +90,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 (item) => item.style.display === "none",
             );
 
-            // LOGIKA 1: JIKA MASIH ADA DATA TERSEMBUNYI (LOAD MORE)
             if (hiddenItems.length > 0) {
                 const toShow = hiddenItems.slice(0, perPage);
 
@@ -115,14 +108,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 );
 
                 if (remainingAfterClick.length === 0) {
-                    if (btnText) btnText.innerText = textLess; // Gunakan teks dari data-less
+                    if (btnText) btnText.innerText = textLess;
                     loadMoreBtn.querySelector(
                         ".material-symbols-outlined",
                     ).style.transform = "rotate(180deg)";
                 }
-            }
-            // LOGIKA 2: JIKA DATA SUDAH TAMPIL SEMUA (SHOW LESS)
-            else {
+            } else {
                 allItems.forEach((item, index) => {
                     if (index >= initialDisplay) {
                         item.style.opacity = "0";
@@ -132,7 +123,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
                 });
 
-                if (btnText) btnText.innerText = textMore; // Gunakan teks dari data-more
+                if (btnText) btnText.innerText = textMore;
                 loadMoreBtn.querySelector(
                     ".material-symbols-outlined",
                 ).style.transform = "rotate(0deg)";
@@ -142,7 +133,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     .scrollIntoView({ behavior: "smooth" });
             }
 
-            // Update counter angka secara dinamis
             setTimeout(() => {
                 const nowVisible = allItems.filter(
                     (item) => item.style.display !== "none",
@@ -153,8 +143,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    /** * GLOBAL CLOSE SEARCH
-     */
     document.addEventListener("click", (e) => {
         const sBox = document.getElementById("search-suggestions");
         if (

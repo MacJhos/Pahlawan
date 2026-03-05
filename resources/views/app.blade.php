@@ -16,5 +16,8 @@
     @include('layout.__footer')
 
     <script src="{{ asset('js/tailwind-config.js') }}?v={{ time() }}"></script>
+    @livewire('hero-chatbot')
+
+    @livewireScripts
 </body>
 </html>

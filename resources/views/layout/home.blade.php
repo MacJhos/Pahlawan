@@ -14,7 +14,7 @@
             ? (str_contains($soekarno->image_path, 'img/') ? asset('storage/' . $soekarno->image_path) : asset('storage/img/' . $soekarno->image_path))
             : asset('storage/img/soekarno_hero.jpg');
 
-        $randomHeroes = $heroes->shuffle();
+        $randomHeroes = $heroes->shuffle()->take(6);
     @endphp
 
     <section class="relative mb-16 overflow-hidden rounded-3xl bg-white dark:bg-slate-900 border border-primary/5 shadow-2xl">

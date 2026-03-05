@@ -32,21 +32,17 @@ class Hero extends Model
         parent::boot();
 
         static::creating(function ($hero) {
-            // Otomatis isi user_id dengan ID admin yang sedang login
             if (Auth::check()) {
                 $hero->user_id = Auth::id();
             }
         });
 
         static::saving(function ($hero) {
-            // Jika nama berubah atau slug kosong, buat slug baru yang unik
             if (empty($hero->slug) || $hero->isDirty('name')) {
                 $slug = Str::slug($hero->name);
                 $originalSlug = $slug;
                 $count = 1;
 
-                // Loop untuk mengecek apakah slug sudah ada di database
-                // (Mencegah error Duplicate Entry)
                 while (static::where('slug', $slug)->where('id', '!=', $hero->id)->exists()) {
                     $slug = $originalSlug . '-' . $count++;
                 }
@@ -59,7 +55,6 @@ class Hero extends Model
     public function getImageUrlAttribute()
     {
         if ($this->image_path) {
-            // Cek apakah image_path sudah mengandung folder 'img/'
             return asset('storage/' . $this->image_path);
         }
         return asset('images/default-hero.jpg');

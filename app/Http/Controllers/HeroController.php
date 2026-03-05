@@ -13,8 +13,6 @@ class HeroController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
-
-
         $heroOfTheDay = Hero::where('name', 'LIKE', '%Soekarno%')->first();
 
         $query = Hero::query();
