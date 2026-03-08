@@ -50,6 +50,7 @@ class HeroController extends Controller
     {
         $search = $request->input('search');
 
+        // Mengambil data Pahlawan
         $heroes = Hero::query()
             ->when($search, fn($q) => $q->where('name', 'like', '%' . $search . '%'))
             ->get()
@@ -58,6 +59,7 @@ class HeroController extends Controller
                 return $item;
             });
 
+        // Mengambil data Monumen
         $monuments = Monument::query()
             ->when($search, fn($q) => $q->where('name', 'like', '%' . $search . '%'))
             ->get()
@@ -67,6 +69,7 @@ class HeroController extends Controller
                 return $item;
             });
 
+        // Mengambil data Relik (Benda Bersejarah)
         $relics = Relic::query()
             ->when($search, fn($q) => $q->where('name', 'like', '%' . $search . '%'))
             ->get()
@@ -76,7 +79,11 @@ class HeroController extends Controller
                 return $item;
             });
 
-        $allMedia = $heroes->concat($monuments)->concat($relics)->shuffle();
+        // MENGGABUNGKAN DAN MENGURUTKAN BERDASARKAN ABJAD (A-Z)
+        $allMedia = $heroes->concat($monuments)
+                           ->concat($relics)
+                           ->sortBy('name') // Mengurutkan berdasarkan nama (A-Z)
+                           ->values();      // Reset index array agar urut di JSON/Frontend
 
         if ($request->ajax()) {
             return response()->json([

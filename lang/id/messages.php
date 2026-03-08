@@ -12,6 +12,7 @@ return [
     'archive_subtitle' => 'Menjelajahi jejak visual perjuangan bangsa melalui koleksi peninggalan, data para pahlawan, dan memorabilia para pahlawan nasional.',
     'all_media' => 'Semua Media',
     'hero_data' => 'Data Pahlawan',
+    'location_map' => 'Lokasi Peta',
     'relic' => 'Peninggalan',
     'monuments' => 'Monumen',
 

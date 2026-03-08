@@ -12,6 +12,7 @@ return [
     'archive_subtitle' => 'Tracing the Visual History of the National Struggle through Artifacts, Biographical Data, and Memorabilia of National Heroes',
     'all_media' => 'All Media',
     'relic' => 'Relic',
+    'location_map' => 'Location Map',
     'hero_data' => 'Hero Data',
     'monuments' => 'Monuments',
 

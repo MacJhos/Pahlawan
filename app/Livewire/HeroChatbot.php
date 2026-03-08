@@ -23,11 +23,7 @@ class HeroChatbot extends Component
             ? 'Hello! I am your Gallery Assistant. Ask me about Heroes, Monuments, or Historical Relics.'
             : 'Halo! Saya asisten Galeri. Tanyakan saya tentang Pahlawan, Monumen, atau Benda Bersejarah.';
 
-        $this->chats[] = [
-            'role' => 'assistant',
-            'content' => $welcomeMessage,
-            'source' => 'system'
-        ];
+        $this->chats[] = ['role' => 'assistant', 'content' => $welcomeMessage, 'source' => 'system'];
     }
 
     public function toggleChat() { $this->isOpen = !$this->isOpen; }
@@ -51,24 +47,25 @@ class HeroChatbot extends Component
             $client = new Client(['verify' => false]);
 
             if ($searchResult['found']) {
-                $systemInstruction = "You are a professional museum guide. Respond in {$languageName}.
-                Start your response by acknowledging this is official gallery data.
-
-                OFFICIAL DATA:
-                Category: {$searchResult['type']}
-                Name: {$searchResult['name']}
-                Information: {$searchResult['content']}
-
-                STRICT RULE: Use the official data provided.
-                STRICT RULE: At the end, invite them to see more details using this link: {$searchResult['url']}";
-
                 $sourceLabel = 'Verified Gallery Data';
-            } else {
-                $disclaimer = ($locale === 'en') ? "I couldn't find that specific item in our catalog." : "Saya tidak menemukan item tersebut di katalog resmi kami.";
-                $systemInstruction = "Respond in {$languageName}. Use your general historical knowledge.
-                Start by saying: '{$disclaimer}'. Then provide a helpful answer based on general history.";
 
+                $correctionText = ($searchResult['is_typo'])
+                    ? "Mungkin yang Anda maksud adalah **{$searchResult['name']}**? Berikut informasinya:\n\n"
+                    : "";
+
+                $systemInstruction = "You are a professional historian. Respond in {$languageName}.
+                STRICT RULE: Directly provide information. DO NOT use 'Official Data' or intro.
+                STRICT RULE: DO NOT ask follow-up questions.
+                STRICT RULE: At the end, only provide the link: {$searchResult['url']}
+
+                DATA: Name: {$searchResult['name']}, Content: {$searchResult['content']}";
+            } else {
                 $sourceLabel = 'AI General Knowledge';
+
+                $systemInstruction = "You are a historical expert. Respond in {$languageName}.
+                STRICT RULE: If the user made a typo (e.g., 'napoleun'), start your response with: 'Mungkin yang Anda maksud adalah **[Correct Name]**? Berikut informasinya:'
+                STRICT RULE: Directly explain the topic. NO introductory phrases or follow-up questions.";
+                $correctionText = "";
             }
 
             $response = $client->post('https://api.groq.com/openai/v1/chat/completions', [
@@ -82,26 +79,22 @@ class HeroChatbot extends Component
                         ['role' => 'user', 'content' => $userQuery]
                     ],
                     'model' => 'llama-3.3-70b-versatile',
-                    'temperature' => 0.3,
-                    'max_tokens' => 800,
+                    'temperature' => 0.1,
                 ]
             ]);
 
             $aiResponse = json_decode($response->getBody(), true)['choices'][0]['message']['content'] ?? 'Error.';
+            $cleanAiResponse = trim(preg_replace('/^(Official Data|Data Resmi):/i', '', $aiResponse));
 
             $this->chats[] = [
                 'role' => 'assistant',
-                'content' => $aiResponse,
+                'content' => $correctionText . $cleanAiResponse,
                 'source' => $sourceLabel
             ];
 
         } catch (\Exception $e) {
-            Log::error("Chatbot AI Error: " . $e->getMessage());
-            $this->chats[] = [
-                'role' => 'assistant',
-                'content' => 'System is a bit sleepy. Try again later!',
-                'source' => 'system'
-            ];
+            Log::error("Chatbot Error: " . $e->getMessage());
+            $this->chats[] = ['role' => 'assistant', 'content' => 'Error.', 'source' => 'system'];
         }
 
         $this->isTyping = false;
@@ -111,35 +104,29 @@ class HeroChatbot extends Component
     private function findInDatabase($query, $locale)
     {
         $inputLower = strtolower($query);
-        $term = '%' . $inputLower . '%';
+        $allData = DB::table('heroes')->select('name', 'bio_id as content', 'slug as id')->get()->map(fn($i) => (object)[...((array)$i), 'type' => 'hero'])
+            ->concat(DB::table('monuments')->select('name', 'description_id as content', 'id')->get()->map(fn($i) => (object)[...((array)$i), 'type' => 'monument']))
+            ->concat(DB::table('relics')->select('name', 'description_id as content', 'id')->get()->map(fn($i) => (object)[...((array)$i), 'type' => 'relic']));
 
-        $hero = DB::table('heroes')->whereRaw('LOWER(name) LIKE ?', [$term])->first();
-        if ($hero) return $this->formatResult($hero, 'hero', $locale);
+        $bestMatch = null;
+        $highestSimilarity = 0;
 
-        $monument = DB::table('monuments')->whereRaw('LOWER(name) LIKE ?', [$term])->first();
-        if ($monument) return $this->formatResult($monument, 'monument', $locale);
+        foreach ($allData as $item) {
+            $nameLower = strtolower($item->name);
+            if ($inputLower === $nameLower) return ['found' => true, 'is_typo' => false, 'name' => $item->name, 'content' => strip_tags($item->content), 'url' => route('gallery.show', ['type' => $item->type, 'id_or_slug' => $item->id])];
 
-        $relic = DB::table('relics')->whereRaw('LOWER(name) LIKE ?', [$term])->first();
-        if ($relic) return $this->formatResult($relic, 'relic', $locale);
+            similar_text($inputLower, $nameLower, $percent);
+            if ($percent > 75 && $percent > $highestSimilarity) {
+                $highestSimilarity = $percent;
+                $bestMatch = $item;
+            }
+        }
+
+        if ($bestMatch) {
+            return ['found' => true, 'is_typo' => true, 'name' => $bestMatch->name, 'content' => strip_tags($bestMatch->content), 'url' => route('gallery.show', ['type' => $bestMatch->type, 'id_or_slug' => $bestMatch->id])];
+        }
 
         return ['found' => false];
-    }
-
-    private function formatResult($data, $type, $locale)
-    {
-        $descId = property_exists($data, 'bio_id') ? $data->bio_id : $data->description_id;
-        $descEn = property_exists($data, 'bio_en') ? $data->bio_en : $data->description_en;
-
-        $content = ($locale === 'en' && !empty($descEn)) ? $descEn : $descId;
-        $identifier = ($type === 'hero') ? $data->slug : $data->id;
-
-        return [
-            'found' => true,
-            'type' => ucfirst($type),
-            'name' => $data->name,
-            'content' => strip_tags($content),
-            'url' => route('gallery.show', ['type' => $type, 'id_or_slug' => $identifier])
-        ];
     }
 
     public function render() { return view('livewire.hero-chatbot'); }
