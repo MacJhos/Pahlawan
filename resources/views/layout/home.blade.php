@@ -17,6 +17,7 @@
         $randomHeroes = $heroes->shuffle()->take(6);
     @endphp
 
+    {{-- Hero of the Day Section --}}
     <section class="relative mb-16 overflow-hidden rounded-3xl bg-white dark:bg-slate-900 border border-primary/5 shadow-2xl">
         <div class="flex flex-col lg:flex-row items-stretch">
             <div class="relative h-[350px] lg:h-[520px] lg:w-1/2 overflow-hidden">
@@ -50,7 +51,7 @@
 
                 <div class="flex flex-wrap gap-4">
                     @if($soekarno)
-                        <a href="{{ route('hero.show', $soekarno->slug) }}" class="flex items-center gap-2 rounded-xl bg-primary px-10 py-4 text-base font-black text-white shadow-xl shadow-primary/25 hover:-translate-y-1 transition-all">
+                        <a href="{{ route('gallery.show', ['type' => 'hero', 'id_or_slug' => $soekarno->slug]) }}" class="flex items-center gap-2 rounded-xl bg-primary px-10 py-4 text-base font-black text-white shadow-xl shadow-primary/25 hover:-translate-y-1 transition-all">
                             {{ __('messages.read_bio') }} <span class="material-symbols-outlined">auto_stories</span>
                         </a>
                     @endif
@@ -76,7 +77,7 @@
 
         <div id="hero-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             @forelse($randomHeroes as $hero)
-                <article onclick="window.location.href='{{ route('hero.show', $hero->slug) }}'" class="hero-card-hover group cursor-pointer overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm transition-all hover:shadow-2xl hover:-translate-y-1 hover:border-primary/20">
+                <article onclick="window.location.href='{{ route('gallery.show', ['type' => 'hero', 'id_or_slug' => $hero->slug]) }}'" class="hero-card-hover group cursor-pointer overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm transition-all hover:shadow-2xl hover:-translate-y-1 hover:border-primary/20">
                     <div class="relative aspect-[4/5] overflow-hidden">
                         <div class="hero-image h-full w-full bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
                              style="background-image: url('{{ str_contains($hero->image_path, 'img/') ? asset('storage/' . $hero->image_path) : asset('storage/img/' . $hero->image_path) }}');">

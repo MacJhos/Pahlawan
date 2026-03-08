@@ -3,11 +3,11 @@
 namespace App\Livewire;
 
 use Livewire\Component;
-use App\Models\Hero;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
+use GuzzleHttp\Client;
 
 class HeroChatbot extends Component
 {
@@ -20,16 +20,17 @@ class HeroChatbot extends Component
     {
         $locale = App::getLocale();
         $welcomeMessage = $locale === 'en'
-            ? 'Hello! I am the Heroes Gallery assistant. Is there a hero you would like to ask about?'
-            : 'Halo! Saya asisten Galeri Pahlawan. Ada pahlawan yang ingin Anda tanyakan?';
+            ? 'Hello! I am your Gallery Assistant. Ask me about Heroes, Monuments, or Historical Relics.'
+            : 'Halo! Saya asisten Galeri. Tanyakan saya tentang Pahlawan, Monumen, atau Benda Bersejarah.';
 
-        $this->chats[] = ['role' => 'assistant', 'content' => $welcomeMessage];
+        $this->chats[] = [
+            'role' => 'assistant',
+            'content' => $welcomeMessage,
+            'source' => 'system'
+        ];
     }
 
-    public function toggleChat()
-    {
-        $this->isOpen = !$this->isOpen;
-    }
+    public function toggleChat() { $this->isOpen = !$this->isOpen; }
 
     public function sendMessage()
     {
@@ -43,70 +44,31 @@ class HeroChatbot extends Component
         $locale = App::getLocale();
         $languageName = $locale === 'en' ? 'English' : 'Indonesian';
 
-        $databaseContext = "";
-        $foundInDatabase = false;
-        $matchedHeroName = "";
+        $searchResult = $this->findInDatabase($userQuery, $locale);
 
-        // 1. PENCARIAN CERDAS (Mendeteksi Typo & Ekstraksi Nama)
-        try {
-            $inputLower = strtolower($userQuery);
-            $allHeroes = DB::table('heroes')->select('name', 'bio_id', 'bio_en', 'hometown')->get();
-
-            $bestMatch = null;
-            $highestSimilarity = 0;
-
-            foreach ($allHeroes as $hero) {
-                $heroName = strtolower($hero->name);
-
-                // Cek A: Jika nama ada utuh di kalimat (Contoh: "jelsakan dewi sartika")
-                if (str_contains($inputLower, $heroName)) {
-                    $bestMatch = $hero;
-                    $foundInDatabase = true;
-                    break;
-                }
-
-                // Cek B: Fuzzy Search per kata (Toleransi Typo)
-                $words = explode(' ', $inputLower);
-                foreach ($words as $word) {
-                    if (strlen($word) < 4) continue;
-
-                    similar_text($word, $heroName, $percent);
-                    if ($percent > 80 && $percent > $highestSimilarity) {
-                        $highestSimilarity = $percent;
-                        $bestMatch = $hero;
-                    }
-                }
-            }
-
-            if ($bestMatch) {
-                $foundInDatabase = true;
-                $matchedHeroName = $bestMatch->name;
-                $rawBio = ($locale === 'en' && !empty($bestMatch->bio_en)) ? $bestMatch->bio_en : $bestMatch->bio_id;
-                $cleanBio = preg_replace('/\s+/', ' ', strip_tags($rawBio));
-
-                $databaseContext = "DATA RESMI DATABASE KAMI:\n";
-                $databaseContext .= "Nama Pahlawan: {$bestMatch->name}\nBiografi: {$cleanBio}";
-            }
-        } catch (\Exception $e) {
-            Log::error("Search Error: " . $e->getMessage());
-        }
-
-        // 2. TANYA KE GROQ AI (Strict Mode)
         try {
             $apiKey = env('GROQ_API_KEY');
-            $client = new \GuzzleHttp\Client(['verify' => false]);
+            $client = new Client(['verify' => false]);
 
-            if ($foundInDatabase) {
-                // KUNCI AI: Larang halusinasi mitologi dan paksa pakai data kita
-                $systemInstruction = "You are a strict history assistant. Respond in {$languageName}.
-                The user asked about '{$matchedHeroName}'.
-                STRICT RULE: Use ONLY the provided database info below.
-                STRICT RULE: Do NOT mention mythology, deities, or anything outside this data.
-                STRICT RULE: Do NOT say 'Mohon maaf'.
-                OFFICIAL DATA: \n" . $databaseContext;
+            if ($searchResult['found']) {
+                $systemInstruction = "You are a professional museum guide. Respond in {$languageName}.
+                Start your response by acknowledging this is official gallery data.
+
+                OFFICIAL DATA:
+                Category: {$searchResult['type']}
+                Name: {$searchResult['name']}
+                Information: {$searchResult['content']}
+
+                STRICT RULE: Use the official data provided.
+                STRICT RULE: At the end, invite them to see more details using this link: {$searchResult['url']}";
+
+                $sourceLabel = 'Verified Gallery Data';
             } else {
-                $disclaimer = ($locale === 'en') ? "I'm sorry, data not found." : "Mohon maaf, data pahlawan ini tidak tersedia di katalog kami.";
-                $systemInstruction = "Respond in {$languageName}. Start with: '{$disclaimer}'";
+                $disclaimer = ($locale === 'en') ? "I couldn't find that specific item in our catalog." : "Saya tidak menemukan item tersebut di katalog resmi kami.";
+                $systemInstruction = "Respond in {$languageName}. Use your general historical knowledge.
+                Start by saying: '{$disclaimer}'. Then provide a helpful answer based on general history.";
+
+                $sourceLabel = 'AI General Knowledge';
             }
 
             $response = $client->post('https://api.groq.com/openai/v1/chat/completions', [
@@ -120,24 +82,65 @@ class HeroChatbot extends Component
                         ['role' => 'user', 'content' => $userQuery]
                     ],
                     'model' => 'llama-3.3-70b-versatile',
-                    'temperature' => 0.0, // WAJIB 0.0 agar AI tidak "ngaco" atau berimajinasi
+                    'temperature' => 0.3,
                     'max_tokens' => 800,
                 ]
             ]);
 
             $aiResponse = json_decode($response->getBody(), true)['choices'][0]['message']['content'] ?? 'Error.';
-            $this->chats[] = ['role' => 'assistant', 'content' => $aiResponse];
+
+            $this->chats[] = [
+                'role' => 'assistant',
+                'content' => $aiResponse,
+                'source' => $sourceLabel
+            ];
 
         } catch (\Exception $e) {
-            $this->chats[] = ['role' => 'assistant', 'content' => 'API Offline.'];
+            Log::error("Chatbot AI Error: " . $e->getMessage());
+            $this->chats[] = [
+                'role' => 'assistant',
+                'content' => 'System is a bit sleepy. Try again later!',
+                'source' => 'system'
+            ];
         }
 
         $this->isTyping = false;
         $this->dispatch('chat-updated');
     }
 
-    public function render()
+    private function findInDatabase($query, $locale)
     {
-        return view('livewire.hero-chatbot');
+        $inputLower = strtolower($query);
+        $term = '%' . $inputLower . '%';
+
+        $hero = DB::table('heroes')->whereRaw('LOWER(name) LIKE ?', [$term])->first();
+        if ($hero) return $this->formatResult($hero, 'hero', $locale);
+
+        $monument = DB::table('monuments')->whereRaw('LOWER(name) LIKE ?', [$term])->first();
+        if ($monument) return $this->formatResult($monument, 'monument', $locale);
+
+        $relic = DB::table('relics')->whereRaw('LOWER(name) LIKE ?', [$term])->first();
+        if ($relic) return $this->formatResult($relic, 'relic', $locale);
+
+        return ['found' => false];
     }
+
+    private function formatResult($data, $type, $locale)
+    {
+        $descId = property_exists($data, 'bio_id') ? $data->bio_id : $data->description_id;
+        $descEn = property_exists($data, 'bio_en') ? $data->bio_en : $data->description_en;
+
+        $content = ($locale === 'en' && !empty($descEn)) ? $descEn : $descId;
+        $identifier = ($type === 'hero') ? $data->slug : $data->id;
+
+        return [
+            'found' => true,
+            'type' => ucfirst($type),
+            'name' => $data->name,
+            'content' => strip_tags($content),
+            'url' => route('gallery.show', ['type' => $type, 'id_or_slug' => $identifier])
+        ];
+    }
+
+    public function render() { return view('livewire.hero-chatbot'); }
 }

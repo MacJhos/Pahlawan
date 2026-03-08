@@ -26,17 +26,28 @@ document.addEventListener("DOMContentLoaded", function () {
                             const item = document.createElement("div");
                             item.className =
                                 "flex items-center gap-3 p-3 hover:bg-primary/5 dark:hover:bg-slate-800 cursor-pointer transition-colors border-b border-slate-50 dark:border-slate-800 last:border-0 group";
+
+                            const imgPath =
+                                hero.type === "hero" &&
+                                !hero.image_path.includes("img/")
+                                    ? `/storage/img/${hero.image_path}`
+                                    : `/storage/${hero.image_path}`;
+
                             item.innerHTML = `
-                            <div class="h-10 w-10 rounded-lg overflow-hidden border border-slate-100 dark:border-slate-700">
-                                <img src="/storage/img/${hero.image_path}" class="h-full w-full object-cover">
-                            </div>
-                            <div class="flex flex-col">
-                                <span class="text-sm font-bold text-slate-700 dark:text-white group-hover:text-primary transition-colors">${hero.name}</span>
-                                <span class="text-[9px] text-slate-400 font-black uppercase tracking-widest">${hero.category}</span>
-                            </div>
-                        `;
-                            item.onclick = () =>
-                                (window.location.href = `/pahlawan/${hero.slug}`);
+                                <div class="h-10 w-10 rounded-lg overflow-hidden border border-slate-100 dark:border-slate-700">
+                                    <img src="${imgPath}" class="h-full w-full object-cover">
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-bold text-slate-700 dark:text-white group-hover:text-primary transition-colors">${hero.name}</span>
+                                    <span class="text-[9px] text-slate-400 font-black uppercase tracking-widest">${hero.type || "Item"}</span>
+                                </div>
+                            `;
+                            item.onclick = () => {
+                                const type = hero.type || "hero";
+                                const idOrSlug =
+                                    type === "hero" ? hero.slug : hero.id;
+                                window.location.href = `/gallery/${type}/${idOrSlug}`;
+                            };
                             suggestionBox.appendChild(item);
                         });
                         suggestionBox.classList.remove("hidden");
@@ -63,83 +74,92 @@ document.addEventListener("DOMContentLoaded", function () {
                 window.location.href = `/galeri?search=${encodeURIComponent(this.value.trim())}`;
             }
         });
+    }
 
-        searchInput.addEventListener("focus", () => {
-            if (searchInput.value.trim().length >= 2)
-                suggestionBox.classList.remove("hidden");
+    const filters = document.querySelectorAll(".filter-btn");
+    const galleryItems = document.querySelectorAll(".gallery-item");
+
+    if (filters.length > 0) {
+        filters.forEach((btn) => {
+            btn.addEventListener("click", function () {
+                const filterValue = this.getAttribute("data-filter");
+
+                // Update UI Tombol Filter
+                filters.forEach((b) => {
+                    b.classList.remove(
+                        "bg-primary",
+                        "text-white",
+                        "shadow-lg",
+                        "shadow-primary/20",
+                    );
+                    b.classList.add(
+                        "bg-white",
+                        "dark:bg-slate-800",
+                        "text-slate-600",
+                        "dark:text-slate-300",
+                        "border-transparent",
+                    );
+                });
+                this.classList.add(
+                    "bg-primary",
+                    "text-white",
+                    "shadow-lg",
+                    "shadow-primary/20",
+                );
+                this.classList.remove(
+                    "bg-white",
+                    "dark:bg-slate-800",
+                    "text-slate-600",
+                    "dark:text-slate-300",
+                    "border-transparent",
+                );
+
+                galleryItems.forEach((item) => {
+                    if (
+                        filterValue === "all" ||
+                        item.getAttribute("data-type") === filterValue
+                    ) {
+                        item.style.display = "block";
+                        item.style.opacity = "1";
+                    } else {
+                        item.style.display = "none";
+                    }
+                });
+
+                updateCount();
+            });
         });
     }
 
     const loadMoreBtn = document.getElementById("load-more-btn");
-    const btnText = document.getElementById("btn-text");
     const currentCountDisplay = document.getElementById("current-count");
     const perPage = 6;
-    const initialDisplay = 6;
+
+    function updateCount() {
+        const visibleItems = Array.from(galleryItems).filter(
+            (item) => item.style.display !== "none",
+        ).length;
+        if (currentCountDisplay) currentCountDisplay.textContent = visibleItems;
+    }
 
     if (loadMoreBtn) {
         loadMoreBtn.addEventListener("click", function (e) {
             e.preventDefault();
-
-            const textMore = loadMoreBtn.getAttribute("data-more");
-            const textLess = loadMoreBtn.getAttribute("data-less");
-
-            const allItems = Array.from(
-                document.querySelectorAll(".hero-item"),
-            );
-            const hiddenItems = allItems.filter(
+            const hiddenItems = Array.from(galleryItems).filter(
                 (item) => item.style.display === "none",
             );
 
             if (hiddenItems.length > 0) {
-                const toShow = hiddenItems.slice(0, perPage);
-
-                toShow.forEach((item, index) => {
+                hiddenItems.slice(0, perPage).forEach((item, index) => {
                     item.style.display = "block";
                     item.style.opacity = "0";
                     setTimeout(() => {
-                        item.style.transition =
-                            "opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1)";
+                        item.style.transition = "opacity 0.6s ease";
                         item.style.opacity = "1";
                     }, index * 100);
                 });
-
-                const remainingAfterClick = allItems.filter(
-                    (item) => item.style.display === "none",
-                );
-
-                if (remainingAfterClick.length === 0) {
-                    if (btnText) btnText.innerText = textLess;
-                    loadMoreBtn.querySelector(
-                        ".material-symbols-outlined",
-                    ).style.transform = "rotate(180deg)";
-                }
-            } else {
-                allItems.forEach((item, index) => {
-                    if (index >= initialDisplay) {
-                        item.style.opacity = "0";
-                        setTimeout(() => {
-                            item.style.display = "none";
-                        }, 500);
-                    }
-                });
-
-                if (btnText) btnText.innerText = textMore;
-                loadMoreBtn.querySelector(
-                    ".material-symbols-outlined",
-                ).style.transform = "rotate(0deg)";
-
-                document
-                    .getElementById("hero-grid")
-                    .scrollIntoView({ behavior: "smooth" });
             }
-
-            setTimeout(() => {
-                const nowVisible = allItems.filter(
-                    (item) => item.style.display !== "none",
-                ).length;
-                if (currentCountDisplay)
-                    currentCountDisplay.textContent = nowVisible;
-            }, 600);
+            updateCount();
         });
     }
 

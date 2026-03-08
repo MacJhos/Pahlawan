@@ -9,10 +9,10 @@ return [
 
     'archive_title' => 'Arsip Sejarah',
     'gallery' => 'Galeri',
-    'archive_subtitle' => 'Menjelajahi jejak visual perjuangan bangsa melalui koleksi foto langka, dokumen bersejarah, dan memorabilia para pahlawan nasional.',
+    'archive_subtitle' => 'Menjelajahi jejak visual perjuangan bangsa melalui koleksi peninggalan, data para pahlawan, dan memorabilia para pahlawan nasional.',
     'all_media' => 'Semua Media',
-    'rare_photos' => 'Foto Langka',
-    'manuscripts' => 'Manuskrip',
+    'hero_data' => 'Data Pahlawan',
+    'relic' => 'Peninggalan',
     'monuments' => 'Monumen',
 
     'lifespan' => 'Masa Hidup',

@@ -9,10 +9,10 @@ return [
 
     'archive_title' => 'Historical Archive',
     'gallery' => 'Gallery',
-    'archive_subtitle' => 'Exploring the visual traces of the nation\'s struggle through a collection of rare photos, historical documents, and memorabilia of national heroes.',
+    'archive_subtitle' => 'Tracing the Visual History of the National Struggle through Artifacts, Biographical Data, and Memorabilia of National Heroes',
     'all_media' => 'All Media',
-    'rare_photos' => 'Rare Photos',
-    'manuscripts' => 'Manuscripts',
+    'relic' => 'Relic',
+    'hero_data' => 'Hero Data',
     'monuments' => 'Monuments',
 
     'lifespan' => 'Lifespan',
