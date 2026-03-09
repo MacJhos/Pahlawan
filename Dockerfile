@@ -1,6 +1,9 @@
 FROM php:8.4-fpm
 
-RUN docker-php-ext-install intl zip
+RUN apt-get update && apt-get install -y \
+    libicu-dev \
+    && docker-php-ext-install intl zip \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY . .
